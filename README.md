@@ -67,7 +67,12 @@ becomes the ID:
 
 If the IDs from your filenames don't line up between panels, or match nothing in your catalog,
 the tool says so on entry and shows you the actual IDs on both sides rather than leaving you
-with empty panels and blank metadata.
+with empty panels and blank metadata. It also warns when the panels don't cover the same objects
+— the usual sign that two sets came from different batches.
+
+To recover, **Change files** on the inspection screen returns to the selection with your
+classifications intact, and **Clear** next to a panel drops that panel's files (a file picker
+can't be emptied by picking nothing).
 
 Objects missing an image in some panel are still shown, with that slot dimmed.
 
