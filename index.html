@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Inspector</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 450px;
+            gap: 25px;
+        }
+        
+        .image-panel {
+            background: linear-gradient(145deg, #2a2a2a, #1f1f1f);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .images-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 0px;
+        }
+        
+        .image-wrapper {
+            background: linear-gradient(145deg, #2a2a2a, #1f1f1f);
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .image-label {
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: #4CAF50;
+            margin-bottom: 8px;
+        }
+        
+        .catalog-data {
+            background: rgba(255,255,255,0.05);
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .catalog-data h4 {
+            margin: 0 0 8px 0;
+            color: #4CAF50;
+            font-size: 13px;
+        }
+        
+        .catalog-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+        
+        .catalog-table th {
+            color: #4CAF50;
+            font-weight: 600;
+            padding: 6px 4px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .catalog-table td {
+            padding: 4px 6px;
+            text-align: center;
+            border-right: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .catalog-table td:last-child {
+            border-right: none;
+        }
+        
+        .catalog-table tbody tr:first-child {
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .catalog-label {
+            color: #aaa;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 10px;
+        }
+        
+        .catalog-value {
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .galaxy-image {
+            width: 100%;
+            max-height: 380px;
+            object-fit: contain;
+            border: 2px solid #444;
+            border-radius: 8px;
+            transition: transform 0.3s ease;
+            cursor: zoom-in;
+            background: #000;
+        }
+        
+        .galaxy-image:hover {
+            transform: scale(1.02);
+        }
+        
+        .form-panel {
+            background: linear-gradient(145deg, #2a2a2a, #1f1f1f);
+            padding: 25px;
+            border-radius: 12px;
+            height: fit-content;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #4CAF50;
+            font-size: 14px;
+        }
+        
+        input[type="text"], textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #555;
+            border-radius: 6px;
+            background: #333;
+            color: white;
+            font-size: 14px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        
+        input[type="text"]:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+        
+        textarea {
+            height: 100px;
+            resize: vertical;
+            font-family: inherit;
+        }
+        
+        .classification-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .classification-option {
+            position: relative;
+        }
+        
+        .classification-option input[type="radio"] {
+            display: none;
+        }
+        
+        .classification-option label {
+            display: block;
+            padding: 15px 10px;
+            border: 2px solid #555;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #333;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-align: center;
+            line-height: 1.3;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .classification-option .number {
+            font-size: 18px;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 5px;
+        }
+        
+        .classification-option input[type="radio"]:checked + label {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            border-color: #4CAF50;
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+        }
+        
+        .classification-option label:hover {
+            background: #444;
+            transform: translateY(-2px);
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 12px;
+            margin: 25px 0;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            background: linear-gradient(135deg, #45a049, #3d8b40);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #666, #555);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        
+        .btn-secondary:hover:not(:disabled) {
+            background: linear-gradient(135deg, #777, #666);
+            transform: translateY(-2px);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            color: white;
+            box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
+        }
+        
+        .btn-danger:hover:not(:disabled) {
+            background: linear-gradient(135deg, #d32f2f, #b71c1c);
+            transform: translateY(-2px);
+        }
+        
+        .progress {
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 2px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            height: 20px;
+            border-radius: 20px;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .galaxy-info {
+            background: rgba(255,255,255,0.05);
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #4CAF50;
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .status-saved {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .status-unsaved {
+            background: #ff9800;
+            color: white;
+        }
+        
+        .shortcuts {
+            margin-top: 25px;
+            padding: 15px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            font-size: 12px;
+            color: #aaa;
+        }
+        
+        .shortcuts h4 {
+            margin: 0 0 8px 0;
+            color: #4CAF50;
+            font-size: 13px;
+        }
+        
+        .shortcuts p {
+            margin: 3px 0;
+        }
+        
+        .completion-stats {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 15px;
+            font-size: 11px;
+        }
+        
+        .stat-item {
+            background: rgba(255,255,255,0.05);
+            padding: 6px 10px;
+            border-radius: 6px;
+            text-align: center;
+            flex: 1;
+        }
+        
+        .stat-number {
+            display: block;
+            font-size: 14px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .setup-panel {
+            background: linear-gradient(145deg, #2a2a2a, #1f1f1f);
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .error-message {
+            background: #f44336;
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        
+        .success-message {
+            background: #4CAF50;
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+
+        .info-message {
+            background: #2196F3;
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            cursor: pointer;
+            opacity: 0;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 2;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            height: 50px;
+            background: #333;
+            border: 2px dashed #555;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .file-input-wrapper:hover {
+            border-color: #4CAF50;
+            background: #3a3a3a;
+        }
+
+        .file-input-wrapper .custom-label {
+            color: #888;
+            font-size: 13px;
+            pointer-events: none;
+        }
+
+        .file-input-wrapper.has-files .custom-label {
+            color: #4CAF50;
+        }
+
+        .auto-save-indicator {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            background: #2196F3;
+            color: white;
+            margin-left: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                gap: 15px;
+                padding: 10px;
+            }
+            
+            .classification-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .image-panel, .form-panel {
+                padding: 15px;
+            }
+            
+            .nav-buttons {
+                justify-content: center;
+            }
+            
+            button {
+                flex: 1;
+                min-width: 120px;
+            }
+        }
+        /* --- additions for the configurable build --- */
+        .config-box { background: #1f1f1f; border: 1px solid #444; border-radius: 6px; padding: 12px; margin-bottom: 18px; }
+        .config-box summary { cursor: pointer; font-weight: 600; color: #4CAF50; }
+        .config-box textarea { width: 100%; min-height: 220px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; margin-top: 10px; }
+        .config-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+        .hint { color: #888; font-size: 12px; }
+        input[type="text"] { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #1f1f1f; color: #eee; }
+    </style>
+</head>
+<body>
+    <div id="setupSection" class="setup-panel">
+        <h2 id="setupTitle">Image Inspector</h2>
+        <p id="setupSubtitle">Select your image files and catalog to begin.</p>
+
+        <details class="config-box" id="configBox">
+            <summary>Configuration (panels, categories, catalog columns)</summary>
+            <p class="hint">Edit the JSON below, or load a config file. See <code>examples/</code> for ready-made configs.</p>
+            <div class="config-row">
+                <div class="file-input-wrapper" id="configFileWrapper" style="flex:1; min-width:220px;">
+                    <input type="file" id="configFile" accept=".json">
+                    <span class="custom-label" id="configFileLabel">Load config JSON</span>
+                </div>
+                <button class="btn-secondary" onclick="applyConfigFromEditor()">Apply</button>
+                <button class="btn-secondary" onclick="resetConfig()">Reset to default</button>
+                <button class="btn-secondary" onclick="downloadConfig()">Download config</button>
+            </div>
+            <textarea id="configEditor" spellcheck="false"></textarea>
+        </details>
+
+        <div id="panelInputs"></div>
+
+        <div class="form-group">
+            <label>Catalog CSV (optional &mdash; metadata shown next to each image):</label>
+            <div class="file-input-wrapper" id="catalogFileWrapper">
+                <input type="file" id="catalogFile" accept=".csv,.tsv,.txt">
+                <span class="custom-label" id="catalogFileLabel">Click to select catalog CSV</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Resume from a previous classification CSV (optional):</label>
+            <div class="file-input-wrapper" id="csvFileWrapper">
+                <input type="file" id="csvImport" accept=".csv">
+                <span class="custom-label" id="csvFileLabel">Click to select classification CSV</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Your name / initials (optional &mdash; recorded in the output):</label>
+            <input type="text" id="inspectorName" placeholder="e.g. jdoe">
+        </div>
+
+        <p style="text-align:center;" class="hint">
+            Select at least one image set. Missing images show as empty slots.
+            Everything runs locally in your browser &mdash; no upload, no server.
+        </p>
+
+        <div class="nav-buttons">
+            <button class="btn-primary" onclick="startInspection()">Start Inspection</button>
+        </div>
+
+        <div id="setupMessages"></div>
+    </div>
+
+    <div id="mainApp" class="hidden">
+        <div class="container">
+            <div class="image-panel">
+                <div class="progress">
+                    <div class="progress-bar" id="progressBar" style="width: 0%;">0 / 0</div>
+                </div>
+
+                <div class="completion-stats">
+                    <div class="stat-item"><span class="stat-number" id="completedCount">0</span><span>Completed</span></div>
+                    <div class="stat-item"><span class="stat-number" id="remainingCount">0</span><span>Remaining</span></div>
+                    <div class="stat-item"><span class="stat-number" id="percentComplete">0%</span><span>Progress</span></div>
+                </div>
+
+                <div class="galaxy-info">
+                    <span id="objectId" style="color:#4CAF50; font-weight:600; font-size:14px;">ID: Loading...</span>
+                    <span style="margin:0 15px; color:#666;">|</span>
+                    <span><strong>Object:</strong> <span id="imageNumber">-</span></span>
+                    <span style="margin:0 15px; color:#666;">|</span>
+                    <span class="status-indicator status-saved" id="saveStatus">Auto-save enabled</span>
+                </div>
+
+                <div class="images-container" id="imagesContainer"></div>
+
+                <div class="catalog-data" id="catalogData"></div>
+
+                <div class="nav-buttons">
+                    <button class="btn-secondary" onclick="previousImage()" id="prevBtn">&larr; Previous</button>
+                    <button class="btn-primary" onclick="nextImage()" id="nextBtn">Next &rarr;</button>
+                    <button class="btn-secondary" onclick="nextUnclassified()">Next unclassified</button>
+                    <button class="btn-secondary" onclick="jumpToImage()">Jump to...</button>
+                </div>
+            </div>
+
+            <div class="form-panel">
+                <h3 id="formTitle">Classification</h3>
+
+                <div class="form-group">
+                    <label id="categoryPrompt">Select a category:</label>
+                    <div class="classification-grid" id="categoryGrid"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>Comments (optional)</label>
+                    <textarea id="comments" placeholder="Additional notes..."></textarea>
+                </div>
+
+                <div class="nav-buttons">
+                    <button class="btn-primary" onclick="saveAndNext()">Save &amp; Next</button>
+                    <button class="btn-secondary" onclick="exportData()">Export CSV</button>
+                    <button class="btn-danger" onclick="clearData()">Clear All Data</button>
+                </div>
+
+                <div class="shortcuts">
+                    <h4>Keyboard shortcuts</h4>
+                    <p><strong>&larr;/&rarr;:</strong> navigate | <strong id="shortcutKeys">1-9</strong>: classify | <strong>Enter:</strong> save &amp; next</p>
+                    <p><strong>Ctrl/Cmd+E:</strong> export CSV | <strong>U:</strong> next unclassified | auto-saved to this browser</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    /* ============================================================
+       Image Inspector - a single-file, offline visual inspection tool.
+       Everything below is driven by CONFIG; nothing is survey-specific.
+       ============================================================ */
+
+    const DEFAULT_CONFIG = {
+        title: "Image Inspector",
+        subtitle: "Select your image files and catalog to begin.",
+        formTitle: "Classification",
+        categoryPrompt: "Select a category:",
+        storagePrefix: "inspector",
+        outputPrefix: "classifications",
+        decimals: 2,
+        // How to turn a filename into an object ID. If idRegex is set it wins
+        // (capture group 1); otherwise the extension and the panel's suffix
+        // are stripped off the filename.
+        idRegex: null,
+        // Column names in the catalog CSV that may hold the object ID.
+        idColumns: ["id", "object_id", "objectId", "ID", "name"],
+        // One entry per image you want to show side by side.
+        panels: [
+            { key: "a", label: "Image A", suffix: "_a", hint: "e.g. 12345_a.jpg" },
+            { key: "b", label: "Image B", suffix: "_b", hint: "e.g. 12345_b.jpg" }
+        ],
+        // Keys 1..9 map to these in order.
+        categories: [
+            { value: 1, label: "Good" },
+            { value: 2, label: "Blend" },
+            { value: 3, label: "Edge / outskirts" },
+            { value: 4, label: "Too faint" },
+            { value: 5, label: "Artifact" }
+        ],
+        // "auto" shows every catalog column, or give explicit groups:
+        // [{ label: "Magnitudes", columns: [{ label: "g", column: "mag_g" }] }]
+        metadata: "auto"
+    };
+
+    let CONFIG = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+
+    let currentIndex = 0;
+    let catalogData = {};     // id -> { column: value }
+    let catalogColumns = [];  // header order from the catalog CSV
+    let objects = [];         // [{ id, urls: {panelKey: url} }]
+    let importedData = {};    // id -> { classification, comments }
+    let inspectorName = "";
+
+    /* ---------------- config plumbing ---------------- */
+
+    function storageKey(id) { return CONFIG.storagePrefix + ":" + id; }
+
+    function categoryLabel(value) {
+        const c = CONFIG.categories.find(c => String(c.value) === String(value));
+        return c ? c.label : "";
+    }
+
+    function renderSetup() {
+        document.getElementById("setupTitle").textContent = CONFIG.title;
+        document.getElementById("setupSubtitle").textContent = CONFIG.subtitle;
+        document.title = CONFIG.title;
+
+        const host = document.getElementById("panelInputs");
+        host.innerHTML = CONFIG.panels.map(p => `
+            <div class="form-group">
+                <label>${escapeHtml(p.label)} images${p.hint ? " <span class='hint'>(" + escapeHtml(p.hint) + ")</span>" : ""}:</label>
+                <div class="file-input-wrapper" id="wrap_${p.key}">
+                    <input type="file" id="files_${p.key}" accept="image/*" multiple>
+                    <span class="custom-label" id="label_${p.key}">Click to select ${escapeHtml(p.label)} images</span>
+                </div>
+            </div>`).join("");
+
+        CONFIG.panels.forEach(p => {
+            document.getElementById("files_" + p.key).addEventListener("change", function (e) {
+                if (e.target.files.length > 0) {
+                    document.getElementById("label_" + p.key).textContent =
+                        e.target.files.length + " " + p.label + " image(s) selected";
+                    document.getElementById("wrap_" + p.key).classList.add("has-files");
+                }
+            });
+        });
+    }
+
+    function renderMainChrome() {
+        document.getElementById("formTitle").textContent = CONFIG.formTitle;
+        document.getElementById("categoryPrompt").textContent = CONFIG.categoryPrompt;
+
+        document.getElementById("imagesContainer").innerHTML = CONFIG.panels.map(p => `
+            <div class="image-wrapper">
+                <div class="image-label">${escapeHtml(p.label)}</div>
+                <img id="img_${p.key}" class="galaxy-image" alt="${escapeHtml(p.label)}">
+            </div>`).join("");
+
+        const cats = CONFIG.categories.slice(0, 9);
+        document.getElementById("categoryGrid").innerHTML = cats.map((c, i) => `
+            <div class="classification-option">
+                <input type="radio" name="classification" value="${escapeHtml(String(c.value))}" id="cat_opt_${i + 1}">
+                <label for="cat_opt_${i + 1}">
+                    <span class="number">${i + 1}</span>
+                    <span>${escapeHtml(c.label)}</span>
+                </label>
+            </div>`).join("");
+        document.getElementById("shortcutKeys").textContent = cats.length > 1 ? "1-" + cats.length : "1";
+    }
+
+    function metadataGroups() {
+        if (CONFIG.metadata && CONFIG.metadata !== "auto") return CONFIG.metadata;
+        const cols = catalogColumns.filter(c => !CONFIG.idColumns.includes(c));
+        if (cols.length === 0) return [];
+        return [{ label: "Catalog", columns: cols.map(c => ({ label: c, column: c })) }];
+    }
+
+    function renderMetadataTable() {
+        const groups = metadataGroups();
+        const host = document.getElementById("catalogData");
+        if (groups.length === 0) { host.innerHTML = ""; host.style.display = "none"; return; }
+        host.style.display = "";
+
+        const headerRow = groups.map(g =>
+            `<th colspan="${g.columns.length}" style="text-align:center; border-bottom:2px solid #4CAF50;">${escapeHtml(g.label)}</th>`).join("");
+        const all = groups.flatMap(g => g.columns);
+        const labelRow = all.map(c => `<td class="catalog-label">${escapeHtml(c.label)}</td>`).join("");
+        const valueRow = all.map(c => `<td class="catalog-value" data-column="${escapeHtml(c.column)}">-</td>`).join("");
+
+        host.innerHTML = `
+            <h4>Catalog data</h4>
+            <div style="overflow-x:auto;">
+              <table class="catalog-table">
+                <thead><tr>${headerRow}</tr></thead>
+                <tbody><tr>${labelRow}</tr><tr>${valueRow}</tr></tbody>
+              </table>
+            </div>`;
+    }
+
+    function applyConfig(next, quiet) {
+        CONFIG = Object.assign(JSON.parse(JSON.stringify(DEFAULT_CONFIG)), next);
+        if (!Array.isArray(CONFIG.panels) || CONFIG.panels.length === 0) throw new Error("config.panels must be a non-empty array");
+        if (!Array.isArray(CONFIG.categories) || CONFIG.categories.length === 0) throw new Error("config.categories must be a non-empty array");
+        renderSetup();
+        document.getElementById("configEditor").value = JSON.stringify(CONFIG, null, 2);
+        if (!quiet) showMessage("Configuration applied: " + CONFIG.panels.length + " image panel(s), " + CONFIG.categories.length + " category(ies).", "success");
+    }
+
+    function applyConfigFromEditor() {
+        try {
+            applyConfig(JSON.parse(document.getElementById("configEditor").value));
+        } catch (err) {
+            showMessage("Invalid configuration: " + err.message, "error");
+        }
+    }
+
+    function resetConfig() { applyConfig(DEFAULT_CONFIG); }
+
+    function downloadConfig() {
+        download(JSON.stringify(CONFIG, null, 2), "inspector_config.json", "application/json");
+    }
+
+    document.getElementById("configFile").addEventListener("change", function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        document.getElementById("configFileLabel").textContent = file.name;
+        document.getElementById("configFileWrapper").classList.add("has-files");
+        readText(file, text => {
+            try { applyConfig(JSON.parse(text)); }
+            catch (err) { showMessage("Could not read config: " + err.message, "error"); }
+        });
+    });
+
+    /* ---------------- helpers ---------------- */
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    function readText(file, cb) {
+        const reader = new FileReader();
+        reader.onload = ev => cb(ev.target.result);
+        reader.readAsText(file);
+    }
+
+    function showMessage(message, type) {
+        const cls = type === "error" ? "error-message" : type === "success" ? "success-message" : "info-message";
+        document.getElementById("setupMessages").innerHTML =
+            `<div class="${cls}">${escapeHtml(message)}</div>`;
+    }
+
+    // Splits one CSV line, honouring "quoted, fields" and "" escapes.
+    function splitCSVLine(line, delim) {
+        const out = [];
+        let field = "", inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (inQuotes) {
+                if (ch === '"') {
+                    if (line[i + 1] === '"') { field += '"'; i++; }
+                    else inQuotes = false;
+                } else field += ch;
+            } else if (ch === '"') inQuotes = true;
+            else if (ch === delim) { out.push(field); field = ""; }
+            else field += ch;
+        }
+        out.push(field);
+        return out.map(v => v.trim());
+    }
+
+    function parseTable(text) {
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        if (lines.length === 0) return { headers: [], rows: [] };
+        const delim = (lines[0].match(/\t/g) || []).length > (lines[0].match(/,/g) || []).length ? "\t" : ",";
+        const headers = splitCSVLine(lines[0], delim);
+        const rows = lines.slice(1).map(l => {
+            const values = splitCSVLine(l, delim);
+            const row = {};
+            headers.forEach((h, i) => { row[h] = values[i] !== undefined ? values[i] : ""; });
+            return row;
+        });
+        return { headers, rows };
+    }
+
+    function pickId(row, headers) {
+        for (const col of CONFIG.idColumns) {
+            if (headers.includes(col) && row[col]) return normalizeId(row[col]);
+        }
+        return null;
+    }
+
+    // Leading apostrophes are a spreadsheet artefact on long numeric IDs.
+    function normalizeId(id) { return String(id).replace(/^'/, "").trim(); }
+
+    function idFromFilename(filename, panel) {
+        if (CONFIG.idRegex) {
+            const m = filename.match(new RegExp(CONFIG.idRegex));
+            if (m) return normalizeId(m[1] !== undefined ? m[1] : m[0]);
+        }
+        let base = filename.replace(/\.[^/.]+$/, "");
+        if (panel && panel.suffix && base.endsWith(panel.suffix)) {
+            base = base.slice(0, -panel.suffix.length);
+        }
+        return normalizeId(base);
+    }
+
+    function formatValue(value) {
+        if (value === undefined || value === null || value === "" || value === "-") return "-";
+        const num = parseFloat(value);
+        if (!isNaN(num) && /^[-+]?[\d.eE+]+$/.test(String(value).trim())) return num.toFixed(CONFIG.decimals);
+        return String(value);
+    }
+
+    function download(content, filename, mime) {
+        const url = URL.createObjectURL(new Blob([content], { type: mime + ";charset=utf-8;" }));
+        const a = document.createElement("a");
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    /* ---------------- loading input files ---------------- */
+
+    document.getElementById("catalogFile").addEventListener("change", function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        document.getElementById("catalogFileLabel").textContent = file.name;
+        document.getElementById("catalogFileWrapper").classList.add("has-files");
+        readText(file, text => {
+            try {
+                const { headers, rows } = parseTable(text);
+                catalogColumns = headers;
+                catalogData = {};
+                let missing = 0;
+                rows.forEach(row => {
+                    const id = pickId(row, headers);
+                    if (id) catalogData[id] = row; else missing++;
+                });
+                const found = Object.keys(catalogData).length;
+                if (found === 0) {
+                    showMessage("No ID column found. Expected one of: " + CONFIG.idColumns.join(", ") +
+                        ". Columns present: " + headers.join(", "), "error");
+                } else {
+                    showMessage("Loaded catalog data for " + found + " object(s)" +
+                        (missing ? " (" + missing + " row(s) had no ID)" : "") + ".", "success");
+                }
+            } catch (err) {
+                showMessage("Error parsing catalog: " + err.message, "error");
+            }
+        });
+    });
+
+    document.getElementById("csvImport").addEventListener("change", function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        document.getElementById("csvFileLabel").textContent = file.name;
+        document.getElementById("csvFileWrapper").classList.add("has-files");
+        readText(file, text => {
+            try {
+                const { headers, rows } = parseTable(text);
+                importedData = {};
+                rows.forEach(row => {
+                    const id = pickId(row, headers) || normalizeId(row[headers[0]]);
+                    if (!id) return;
+                    importedData[id] = {
+                        classification: row.classification !== undefined ? row.classification : row.Classification,
+                        comments: row.comments !== undefined ? row.comments : row.Comments
+                    };
+                });
+                showMessage("Imported " + Object.keys(importedData).length + " previous classification(s).", "success");
+            } catch (err) {
+                showMessage("Error parsing classification CSV: " + err.message, "error");
+            }
+        });
+    });
+
+    function startInspection() {
+        const byId = {};
+        let any = false;
+
+        CONFIG.panels.forEach(panel => {
+            const input = document.getElementById("files_" + panel.key);
+            const files = input && input.files ? Array.from(input.files) : [];
+            if (files.length) any = true;
+            files.forEach(file => {
+                const id = idFromFilename(file.name, panel);
+                byId[id] = byId[id] || { id: id, urls: {} };
+                byId[id].urls[panel.key] = URL.createObjectURL(file);
+            });
+        });
+
+        if (!any) { showMessage("Please select at least one set of images.", "error"); return; }
+
+        objects = Object.values(byId).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+        if (objects.length === 0) { showMessage("No images found. Please check your file selection.", "error"); return; }
+
+        inspectorName = document.getElementById("inspectorName").value.trim();
+
+        renderMainChrome();
+        renderMetadataTable();
+        setupImageZoom();
+
+        document.getElementById("setupSection").classList.add("hidden");
+        document.getElementById("mainApp").classList.remove("hidden");
+
+        const firstUnclassified = objects.findIndex(o => !localStorage.getItem(storageKey(o.id)));
+        loadObject(firstUnclassified > 0 ? firstUnclassified : 0);
+    }
+
+    /* ---------------- inspection loop ---------------- */
+
+    function loadObject(index) {
+        if (index < 0 || index >= objects.length) return;
+        currentIndex = index;
+        const obj = objects[index];
+
+        document.getElementById("objectId").textContent = "ID: " + obj.id;
+        document.getElementById("imageNumber").textContent = (index + 1) + " of " + objects.length;
+
+        CONFIG.panels.forEach(p => {
+            const img = document.getElementById("img_" + p.key);
+            const url = obj.urls[p.key];
+            img.src = url || "";
+            img.style.opacity = url ? "1" : "0.3";
+        });
+
+        const row = catalogData[obj.id] || {};
+        document.querySelectorAll("#catalogData .catalog-value").forEach(cell => {
+            cell.textContent = formatValue(row[cell.dataset.column]);
+        });
+
+        const pct = ((index + 1) / objects.length) * 100;
+        document.getElementById("progressBar").style.width = pct + "%";
+        document.getElementById("progressBar").textContent = (index + 1) + " / " + objects.length;
+
+        updateStats();
+        loadSaved(obj.id);
+
+        document.getElementById("prevBtn").disabled = index === 0;
+        document.getElementById("nextBtn").disabled = index === objects.length - 1;
+    }
+
+    function updateStats() {
+        const done = objects.filter(o => localStorage.getItem(storageKey(o.id))).length;
+        document.getElementById("completedCount").textContent = done;
+        document.getElementById("remainingCount").textContent = objects.length - done;
+        document.getElementById("percentComplete").textContent = ((done / objects.length) * 100).toFixed(1) + "%";
+    }
+
+    function autoSave() {
+        const checked = document.querySelector('input[name="classification"]:checked');
+        if (!checked) return;
+        const obj = objects[currentIndex];
+        localStorage.setItem(storageKey(obj.id), JSON.stringify({
+            id: obj.id,
+            classification: checked.value,
+            classification_label: categoryLabel(checked.value),
+            comments: document.getElementById("comments").value.trim(),
+            inspector: inspectorName,
+            timestamp: new Date().toISOString()
+        }));
+        updateStats();
+        setStatus("Saved");
+    }
+
+    function loadSaved(id) {
+        const saved = localStorage.getItem(storageKey(id));
+        const record = saved ? JSON.parse(saved) : importedData[id];
+        const radios = document.querySelectorAll('input[name="classification"]');
+        if (record && record.classification !== undefined && record.classification !== "") {
+            radios.forEach(r => { r.checked = String(r.value) === String(record.classification); });
+            document.getElementById("comments").value = record.comments || "";
+            setStatus(saved ? "Saved" : "Loaded from CSV");
+        } else {
+            radios.forEach(r => { r.checked = false; });
+            document.getElementById("comments").value = "";
+            setStatus("Auto-save enabled");
+        }
+    }
+
+    function setStatus(text) { document.getElementById("saveStatus").textContent = text; }
+
+    function nextImage() { if (currentIndex < objects.length - 1) loadObject(currentIndex + 1); }
+    function previousImage() { if (currentIndex > 0) loadObject(currentIndex - 1); }
+    function saveAndNext() { autoSave(); nextImage(); }
+
+    function nextUnclassified() {
+        for (let step = 1; step <= objects.length; step++) {
+            const i = (currentIndex + step) % objects.length;
+            if (!localStorage.getItem(storageKey(objects[i].id))) { loadObject(i); return; }
+        }
+        alert("Every object has been classified.");
+    }
+
+    function jumpToImage() {
+        const input = prompt("Jump to object number (1-" + objects.length + "), or type an ID:");
+        if (input === null) return;
+        const byId = objects.findIndex(o => o.id === normalizeId(input));
+        if (byId >= 0) { loadObject(byId); return; }
+        const index = parseInt(input, 10) - 1;
+        if (isNaN(index) || index < 0 || index >= objects.length) {
+            alert("No such object. Enter a number between 1 and " + objects.length + ", or a known ID.");
+            return;
+        }
+        loadObject(index);
+    }
+
+    /* ---------------- export / reset ---------------- */
+
+    function exportData() {
+        const rows = objects
+            .map(o => localStorage.getItem(storageKey(o.id)))
+            .filter(Boolean)
+            .map(JSON.parse);
+
+        if (rows.length === 0) { alert("No data to export yet. Classify some images first."); return; }
+
+        const headers = ["id", "classification", "classification_label", "comments", "inspector", "timestamp"];
+        const csv = [headers.join(",")].concat(rows.map(r =>
+            headers.map(h => '"' + String(r[h] === undefined ? "" : r[h]).replace(/"/g, '""') + '"').join(",")
+        )).join("\n");
+
+        const stamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
+        const who = inspectorName ? "_" + inspectorName.replace(/[^\w.-]/g, "") : "";
+        download(csv, CONFIG.outputPrefix + who + "_" + stamp + ".csv", "text/csv");
+        alert("Exported " + rows.length + " classification(s) to your Downloads folder.");
+    }
+
+    function clearData() {
+        if (!confirm("Delete ALL saved classifications for this dataset? This cannot be undone.")) return;
+        objects.forEach(o => localStorage.removeItem(storageKey(o.id)));
+        loadObject(currentIndex);
+        alert("All saved classifications have been cleared.");
+    }
+
+    /* ---------------- interaction ---------------- */
+
+    function setupImageZoom() {
+        CONFIG.panels.forEach(p => {
+            const img = document.getElementById("img_" + p.key);
+            img.style.cursor = "zoom-in";
+            img.addEventListener("click", function () {
+                const zoomed = this.dataset.zoomed === "1";
+                this.style.transform = zoomed ? "scale(1)" : "scale(1.8)";
+                this.style.zIndex = zoomed ? "1" : "1000";
+                this.style.cursor = zoomed ? "zoom-in" : "zoom-out";
+                this.dataset.zoomed = zoomed ? "0" : "1";
+            });
+        });
+    }
+
+    document.addEventListener("keydown", function (e) {
+        if (document.getElementById("mainApp").classList.contains("hidden")) return;
+        if (e.target.tagName.toLowerCase() === "textarea" || e.target.tagName.toLowerCase() === "input") return;
+
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "e") { e.preventDefault(); exportData(); return; }
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+        const key = e.key.toLowerCase();
+        if (key === "arrowleft") { e.preventDefault(); previousImage(); return; }
+        if (key === "arrowright") { e.preventDefault(); nextImage(); return; }
+        if (key === "enter") { e.preventDefault(); saveAndNext(); return; }
+        if (key === "u") { e.preventDefault(); nextUnclassified(); return; }
+        if (/^[1-9]$/.test(key)) {
+            const radio = document.getElementById("cat_opt_" + key);
+            if (radio) { e.preventDefault(); radio.checked = true; autoSave(); }
+        }
+    });
+
+    document.addEventListener("change", function (e) {
+        if (e.target.name === "classification") autoSave();
+    });
+
+    document.getElementById("comments").addEventListener("blur", autoSave);
+
+    applyConfig(DEFAULT_CONFIG, true);
+    </script>
+</body>
+</html>

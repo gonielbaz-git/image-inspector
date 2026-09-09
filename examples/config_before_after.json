@@ -1,0 +1,20 @@
+{
+  "title": "Before / After Inspector",
+  "subtitle": "Compare two renderings of the same object and score the result.",
+  "formTitle": "Verdict",
+  "categoryPrompt": "How did the fit do?",
+  "storagePrefix": "beforeafter",
+  "outputPrefix": "verdicts",
+  "panels": [
+    { "key": "data",  "label": "Data",     "suffix": "_data",  "hint": "12345_data.png" },
+    { "key": "model", "label": "Model",    "suffix": "_model", "hint": "12345_model.png" },
+    { "key": "resid", "label": "Residual", "suffix": "_resid", "hint": "12345_resid.png" }
+  ],
+  "categories": [
+    { "value": 1, "label": "Good fit" },
+    { "value": 2, "label": "Acceptable" },
+    { "value": 3, "label": "Bad fit" },
+    { "value": 4, "label": "Failed / unusable" }
+  ],
+  "metadata": "auto"
+}

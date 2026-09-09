@@ -1,0 +1,34 @@
+{
+  "title": "Galaxy Inspector - Merian Classification",
+  "subtitle": "Select your galaxy image files and catalog to begin classification.",
+  "storagePrefix": "merian",
+  "outputPrefix": "merian_classifications",
+  "idRegex": "^M(\\d+)_",
+  "idColumns": ["objectId_Merian", "merian_id", "Merian ID", "id"],
+  "panels": [
+    { "key": "hsc",  "label": "HSC RGB",    "suffix": "_hscdr3",     "hint": "M*_hscdr3.jpg" },
+    { "key": "n708", "label": "Merian 708", "suffix": "_merian708",  "hint": "M*_merian708.jpg" },
+    { "key": "n540", "label": "Merian 540", "suffix": "_merian540",  "hint": "M*_merian540.jpg" }
+  ],
+  "categories": [
+    { "value": 1, "label": "Valid Source" },
+    { "value": 2, "label": "Blend" },
+    { "value": 3, "label": "Outskirts" },
+    { "value": 4, "label": "Faint Source (Nearby Bright)" },
+    { "value": 5, "label": "Artifact" }
+  ],
+  "metadata": [
+    { "label": "Apparent Magnitudes (cmodel)", "columns": [
+      { "label": "g",   "column": "apparent_mag_g_cmodel" },
+      { "label": "r",   "column": "apparent_mag_r_cmodel" },
+      { "label": "i",   "column": "apparent_mag_i_cmodel" },
+      { "label": "708", "column": "apparent_mag_708_cmodel" },
+      { "label": "540", "column": "apparent_mag_540_cmodel" }
+    ]},
+    { "label": "Colors (gaap)", "columns": [
+      { "label": "g-r",   "column": "g-r color" },
+      { "label": "i-708", "column": "i-708 color" },
+      { "label": "r-540", "column": "r-540 color" }
+    ]}
+  ]
+}
