@@ -1165,39 +1165,63 @@
         };
     }
 
-    // An exponential-profile blob or two on a noisy sky, tinted per panel.
-    function demoImage(id, panelIndex) {
-        const size = 260;
+    const DEMO_SIZE = 260;
+
+    // The scene - where the sources are and what shape they have. Seeded from the
+    // object ID alone, so every panel of an object shows the SAME source: only
+    // colour, depth and noise change from panel to panel, as they would between
+    // bands or between a data and a model rendering.
+    function demoScene(id) {
+        const rand = seededRandom("scene:" + id);
+        const size = DEMO_SIZE;
+        const sources = [{
+            x: size / 2 + (rand() - 0.5) * 12,
+            y: size / 2 + (rand() - 0.5) * 12,
+            scale: 20 + rand() * 22,
+            peak: 175 + rand() * 80,
+            q: 0.45 + rand() * 0.5,
+            pa: rand() * Math.PI
+        }];
+        const neighbours = Math.floor(rand() * 3);
+        for (let i = 0; i < neighbours; i++) {
+            const angle = rand() * 2 * Math.PI;
+            const radius = 45 + rand() * 70;
+            sources.push({
+                x: size / 2 + Math.cos(angle) * radius,
+                y: size / 2 + Math.sin(angle) * radius,
+                scale: 3 + rand() * 6,
+                peak: 90 + rand() * 140,
+                q: 0.85 + rand() * 0.15,
+                pa: rand() * Math.PI
+            });
+        }
+        return sources;
+    }
+
+    // Renders one panel of a scene: same geometry, its own tint, flux scaling,
+    // seeing and noise realisation.
+    function demoImage(scene, id, panelIndex) {
+        const size = DEMO_SIZE;
         const canvas = document.createElement("canvas");
         canvas.width = canvas.height = size;
         const ctx = canvas.getContext("2d");
         const image = ctx.createImageData(size, size);
-        const rand = seededRandom(id + ":" + panelIndex);
-        const tint = DEMO_TINTS[panelIndex % DEMO_TINTS.length];
 
-        const sources = [{
-            x: size / 2 + (rand() - 0.5) * 12, y: size / 2 + (rand() - 0.5) * 12,
-            scale: 20 + rand() * 22, peak: 175 + rand() * 80,
-            q: 0.45 + rand() * 0.5, pa: rand() * Math.PI
-        }];
-        const neighbours = Math.floor(rand() * 3);
-        for (let i = 0; i < neighbours; i++) {
-            sources.push({
-                x: rand() * size, y: rand() * size,
-                scale: 3 + rand() * 6, peak: 90 + rand() * 140,
-                q: 0.85 + rand() * 0.15, pa: rand() * Math.PI
-            });
-        }
+        const look = seededRandom("panel:" + id + ":" + panelIndex);
+        const tint = DEMO_TINTS[panelIndex % DEMO_TINTS.length];
+        const flux = 0.75 + look() * 0.55;   // this band is brighter or fainter
+        const seeing = 0.95 + look() * 0.35;  // and a little sharper or blurrier
+        const noise = seededRandom("noise:" + id + ":" + panelIndex);
 
         for (let y = 0; y < size; y++) {
             for (let x = 0; x < size; x++) {
-                let v = 5 + rand() * 11;
-                for (const s of sources) {
+                let v = 5 + noise() * 11;
+                for (const s of scene) {
                     const dx = x - s.x, dy = y - s.y;
                     const cos = Math.cos(s.pa), sin = Math.sin(s.pa);
                     const u = dx * cos + dy * sin;
                     const w = (-dx * sin + dy * cos) / s.q;
-                    v += s.peak * Math.exp(-Math.sqrt(u * u + w * w) / s.scale);
+                    v += s.peak * flux * Math.exp(-Math.sqrt(u * u + w * w) / (s.scale * seeing));
                 }
                 const o = (y * size + x) * 4;
                 image.data[o] = Math.min(255, v * tint[0]);
@@ -1236,8 +1260,9 @@
 
         for (let i = 1; i <= DEMO_COUNT; i++) {
             const id = "DEMO-" + String(i).padStart(4, "0");
+            const scene = demoScene(id);
             const urls = {};
-            CONFIG.panels.forEach((p, pi) => { urls[p.key] = demoImage(id, pi); });
+            CONFIG.panels.forEach((p, pi) => { urls[p.key] = demoImage(scene, id, pi); });
             objects.push({ id: id, urls: urls });
 
             const rand = seededRandom("catalog:" + id);
