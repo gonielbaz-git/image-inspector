@@ -28,8 +28,13 @@ The inspection screen — images side by side, catalog values underneath, catego
 **Preview with demo data** on the setup screen (or the `?demo=1` link above) generates a synthetic
 set of objects in your browser and drops you straight into the inspection screen. Every control is
 live — classify, navigate, export — so you can see exactly what the tool does before organising a
-single file. The demo images are drawn on a canvas, not real observations, and demo progress is
-kept in its own namespace so it can never mix with real work.
+single file. **Load my own images** in the banner takes you back to the setup screen when you are
+done; so does reloading.
+
+The demo images are drawn on a canvas from a fixed seed, not real observations, and demo progress
+is kept in its own storage namespace so it can never mix with real work. Every panel of a demo
+object shows the same synthetic source, differing only in colour, depth and noise — as the panels
+of a real object would.
 
 ## Quick start
 

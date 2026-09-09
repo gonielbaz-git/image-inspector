@@ -502,6 +502,7 @@
         .demo-banner { background: #3a2f12; border: 1px solid #7a6320; color: #f0d68a; border-radius: 6px;
             padding: 10px 14px; margin-bottom: 14px; font-size: 13px; line-height: 1.5; }
         .demo-banner strong { color: #ffd964; }
+        .btn-inline { padding: 6px 14px !important; font-size: 12px !important; margin-left: 8px; vertical-align: middle; }
         input[type="text"] { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #1f1f1f; color: #eee; }
     </style>
 </head>
@@ -571,7 +572,8 @@
                 <div class="demo-banner hidden" id="demoBanner">
                     <strong>Demo data.</strong> These images and catalog rows were generated in your
                     browser &mdash; they are not real observations. Every control below is live, so click
-                    around freely. Reload the page to load your own images.
+                    around freely.
+                    <button class="btn-secondary btn-inline" onclick="returnToSetup()">Load my own images</button>
                 </div>
                 <div class="progress">
                     <div class="progress-bar" id="progressBar" style="width: 0%;">0 / 0</div>
@@ -674,6 +676,7 @@
     let currentIndex = 0;
     let catalogData = {};     // id -> { column: value }
     let catalogColumns = [];  // header order from the catalog CSV
+    let loadedCatalog = null; // the real catalog, kept aside while the demo runs
     let objects = [];         // [{ id, urls: {panelKey: url} }]
     let importedData = {};    // id -> { classification, comments }
     let inspectorName = "";
@@ -905,6 +908,7 @@
                     const id = pickId(row, headers);
                     if (id) catalogData[id] = row; else missing++;
                 });
+                loadedCatalog = { data: catalogData, columns: catalogColumns };
                 const found = Object.keys(catalogData).length;
                 if (found === 0) {
                     showMessage("No ID column found. Expected one of: " + CONFIG.idColumns.join(", ") +
@@ -943,7 +947,34 @@
         });
     });
 
+    // Back to the setup screen without a reload, from the demo or from a real run.
+    // Progress is already in localStorage, so nothing is lost.
+    function returnToSetup() {
+        demoMode = false;
+        objects = [];
+        catalogData = loadedCatalog ? loadedCatalog.data : {};
+        catalogColumns = loadedCatalog ? loadedCatalog.columns : [];
+        document.getElementById("demoBanner").classList.add("hidden");
+        document.getElementById("mainApp").classList.add("hidden");
+        document.getElementById("setupSection").classList.remove("hidden");
+        document.getElementById("setupMessages").innerHTML = "";
+        dropDemoFromUrl();
+        window.scrollTo(0, 0);
+    }
+
+    // The ?demo=1 link should open the preview once - not trap every reload in it.
+    function dropDemoFromUrl() {
+        if (!/(\?|&)demo=1\b/.test(location.search) && location.hash !== "#demo") return;
+        try {
+            const url = new URL(location.href);
+            url.searchParams.delete("demo");
+            if (url.hash === "#demo") url.hash = "";
+            history.replaceState(null, "", url.pathname + (url.search || "") + (url.hash || ""));
+        } catch (err) { /* file:// in some browsers refuses replaceState; harmless */ }
+    }
+
     function startInspection() {
+        demoMode = false;
         const byId = {};
         let any = false;
 
@@ -1295,6 +1326,7 @@
         setupImageZoom();
         seedDemoProgress();
 
+        dropDemoFromUrl();
         document.getElementById("demoBanner").classList.remove("hidden");
         document.getElementById("setupSection").classList.add("hidden");
         document.getElementById("mainApp").classList.remove("hidden");
@@ -1321,6 +1353,12 @@
     if (/(\?|&)demo=1\b/.test(location.search) || location.hash === "#demo") {
         startDemo();
     }
+
+    // A #demo link followed from this same page is only a hash change, so it never
+    // reloads and the check above never runs again.
+    window.addEventListener("hashchange", function () {
+        if (location.hash === "#demo") startDemo();
+    });
 
     </script>
 </body>
