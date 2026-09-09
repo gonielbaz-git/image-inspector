@@ -4,6 +4,8 @@ A single HTML file for visual inspection of image sets. Open it in a browser, po
 your images and (optionally) a catalog CSV, click through them with the keyboard, and export
 your classifications as a CSV.
 
+**[Open the tool →](https://gonielbaz-git.github.io/image-inspector/)** (or download `index.html` and open it offline)
+
 No install, no server, no dependencies. Nothing is uploaded anywhere — the file reads your
 images locally and saves progress in your browser's `localStorage`.
 
