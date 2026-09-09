@@ -502,6 +502,13 @@
         .demo-banner { background: #3a2f12; border: 1px solid #7a6320; color: #f0d68a; border-radius: 6px;
             padding: 10px 14px; margin-bottom: 14px; font-size: 13px; line-height: 1.5; }
         .demo-banner strong { color: #ffd964; }
+        .data-warning { background: #3a1f1f; border: 1px solid #8a4040; color: #f3c0c0; border-radius: 6px;
+            padding: 10px 14px; margin-bottom: 14px; font-size: 13px; line-height: 1.6; }
+        .data-warning strong { color: #ff9d9d; }
+        .data-warning code { background: #00000055; padding: 1px 5px; border-radius: 3px; }
+        .data-note { background: #1c2733; border: 1px solid #3c576f; color: #bcd2e2; border-radius: 6px;
+            padding: 9px 14px; margin-bottom: 14px; font-size: 12.5px; line-height: 1.6; }
+        .data-note code { background: #00000055; padding: 1px 5px; border-radius: 3px; color: #e6f0f8; }
         .btn-inline { padding: 6px 14px !important; font-size: 12px !important; margin-left: 8px; vertical-align: middle; }
         input[type="text"] { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #1f1f1f; color: #eee; }
     </style>
@@ -569,6 +576,8 @@
     <div id="mainApp" class="hidden">
         <div class="container">
             <div class="image-panel">
+                <div class="data-warning hidden" id="dataWarning"></div>
+                <div class="data-note hidden" id="dataNote"></div>
                 <div class="demo-banner hidden" id="demoBanner">
                     <strong>Demo data.</strong> These images and catalog rows were generated in your
                     browser &mdash; they are not real observations. Every control below is live, so click
@@ -654,8 +663,8 @@
         idColumns: ["id", "object_id", "objectId", "ID", "name"],
         // One entry per image you want to show side by side.
         panels: [
-            { key: "a", label: "Image A", suffix: "_a", hint: "e.g. 12345_a.jpg" },
-            { key: "b", label: "Image B", suffix: "_b", hint: "e.g. 12345_b.jpg" }
+            { key: "a", label: "Image A", hint: "one file per object, e.g. 12345_data.png" },
+            { key: "b", label: "Image B", hint: "the same objects, e.g. 12345_model.png" }
         ],
         // Keys 1..9 map to these in order.
         categories: [
@@ -677,6 +686,7 @@
     let catalogData = {};     // id -> { column: value }
     let catalogColumns = [];  // header order from the catalog CSV
     let loadedCatalog = null; // the real catalog, kept aside while the demo runs
+    let catalogIdColumn = null;
     let objects = [];         // [{ id, urls: {panelKey: url} }]
     let importedData = {};    // id -> { classification, comments }
     let inspectorName = "";
@@ -854,15 +864,68 @@
         return { headers, rows };
     }
 
-    function pickId(row, headers) {
+    // Find the column holding object IDs: a configured name first, then anything
+    // that reads like an identifier. Real catalogs call it objectId_Merian,
+    // OBJID, source_id, ... and demanding an exact name just blocks people.
+    function resolveIdColumn(headers) {
         for (const col of CONFIG.idColumns) {
-            if (headers.includes(col) && row[col]) return normalizeId(row[col]);
+            if (headers.includes(col)) return col;
         }
+        const lower = headers.map(h => h.toLowerCase());
+        for (const col of CONFIG.idColumns) {
+            const i = lower.indexOf(col.toLowerCase());
+            if (i >= 0) return headers[i];
+        }
+        const looksLikeId = h => {
+            const words = h.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_\-.]+/g, " ").toLowerCase();
+            const flat = h.toLowerCase();
+            return /\bids?\b/.test(words) || /id$/.test(flat) || /^id/.test(flat);
+        };
+        const candidates = headers.filter(looksLikeId);
+        if (candidates.length) return candidates.sort((a, b) => a.length - b.length)[0];
         return null;
+    }
+
+    function pickId(row, column) {
+        return column && row[column] ? normalizeId(row[column]) : null;
     }
 
     // Leading apostrophes are a spreadsheet artefact on long numeric IDs.
     function normalizeId(id) { return String(id).replace(/^'/, "").trim(); }
+
+    // The longest ending shared by every filename in a panel - that's the part
+    // identifying the panel rather than the object, so it can come off the ID.
+    function commonSuffix(names) {
+        if (names.length < 2) return "";
+        let suffix = names[0];
+        for (const name of names.slice(1)) {
+            let i = 0;
+            while (i < suffix.length && i < name.length &&
+                   suffix[suffix.length - 1 - i] === name[name.length - 1 - i]) i++;
+            suffix = suffix.slice(suffix.length - i);
+            if (!suffix) return "";
+        }
+        return suffix;
+    }
+
+    // Only cut at a separator. "M100_x" and "M200_x" share "00_x", and stripping
+    // that would eat half the ID.
+    function separatorAligned(suffix) {
+        for (let i = 0; i < suffix.length; i++) {
+            if ("_-. ".indexOf(suffix[i]) >= 0) return suffix.slice(i);
+        }
+        return "";
+    }
+
+    // Per panel: the configured suffix if there is one, else whatever its files
+    // have in common. This is what lets a set of M*_hscdr3 / M*_merian708 files
+    // pair up with no configuration at all.
+    function effectiveSuffix(panel, filenames) {
+        if (CONFIG.idRegex) return "";
+        const bases = filenames.map(n => n.replace(/\.[^/.]+$/, ""));
+        if (panel.suffix && bases.some(b => b.endsWith(panel.suffix))) return panel.suffix;
+        return separatorAligned(commonSuffix(bases));
+    }
 
     function idFromFilename(filename, panel) {
         if (CONFIG.idRegex) {
@@ -901,22 +964,27 @@
         readText(file, text => {
             try {
                 const { headers, rows } = parseTable(text);
+                const idColumn = resolveIdColumn(headers);
+                if (!idColumn) {
+                    showMessage("Could not tell which column holds the object IDs. Add its name to " +
+                        "\"idColumns\" in the configuration. Columns present: " + headers.join(", "), "error");
+                    return;
+                }
                 catalogColumns = headers;
                 catalogData = {};
+                catalogIdColumn = idColumn;
                 let missing = 0;
                 rows.forEach(row => {
-                    const id = pickId(row, headers);
+                    const id = pickId(row, idColumn);
                     if (id) catalogData[id] = row; else missing++;
                 });
-                loadedCatalog = { data: catalogData, columns: catalogColumns };
+                loadedCatalog = { data: catalogData, columns: catalogColumns, idColumn: idColumn };
                 const found = Object.keys(catalogData).length;
-                if (found === 0) {
-                    showMessage("No ID column found. Expected one of: " + CONFIG.idColumns.join(", ") +
-                        ". Columns present: " + headers.join(", "), "error");
-                } else {
-                    showMessage("Loaded catalog data for " + found + " object(s)" +
-                        (missing ? " (" + missing + " row(s) had no ID)" : "") + ".", "success");
-                }
+                const configured = CONFIG.idColumns.includes(idColumn);
+                showMessage("Loaded catalog data for " + found + " object(s), using \"" + idColumn +
+                    "\" as the ID column" + (configured ? "" : " (detected)") +
+                    (missing ? "; " + missing + " row(s) had no ID" : "") + ".",
+                    found ? "success" : "error");
             } catch (err) {
                 showMessage("Error parsing catalog: " + err.message, "error");
             }
@@ -931,9 +999,10 @@
         readText(file, text => {
             try {
                 const { headers, rows } = parseTable(text);
+                const idColumn = resolveIdColumn(headers);
                 importedData = {};
                 rows.forEach(row => {
-                    const id = pickId(row, headers) || normalizeId(row[headers[0]]);
+                    const id = pickId(row, idColumn) || normalizeId(row[headers[0]]);
                     if (!id) return;
                     importedData[id] = {
                         classification: row.classification !== undefined ? row.classification : row.Classification,
@@ -954,7 +1023,10 @@
         objects = [];
         catalogData = loadedCatalog ? loadedCatalog.data : {};
         catalogColumns = loadedCatalog ? loadedCatalog.columns : [];
+        catalogIdColumn = loadedCatalog ? loadedCatalog.idColumn : null;
         document.getElementById("demoBanner").classList.add("hidden");
+        document.getElementById("dataWarning").classList.add("hidden");
+        document.getElementById("dataNote").classList.add("hidden");
         document.getElementById("mainApp").classList.add("hidden");
         document.getElementById("setupSection").classList.remove("hidden");
         document.getElementById("setupMessages").innerHTML = "";
@@ -978,12 +1050,15 @@
         const byId = {};
         let any = false;
 
+        const detected = [];
         CONFIG.panels.forEach(panel => {
             const input = document.getElementById("files_" + panel.key);
             const files = input && input.files ? Array.from(input.files) : [];
             if (files.length) any = true;
+            const suffix = effectiveSuffix(panel, files.map(f => f.name));
+            if (suffix && suffix !== panel.suffix) detected.push({ label: panel.label, suffix: suffix });
             files.forEach(file => {
-                const id = idFromFilename(file.name, panel);
+                const id = idFromFilename(file.name, { suffix: suffix });
                 byId[id] = byId[id] || { id: id, urls: {} };
                 byId[id].urls[panel.key] = URL.createObjectURL(file);
             });
@@ -994,17 +1069,86 @@
         objects = Object.values(byId).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
         if (objects.length === 0) { showMessage("No images found. Please check your file selection.", "error"); return; }
 
+        const warnings = describeMatching(byId);
+        const notes = detected;
+
         inspectorName = document.getElementById("inspectorName").value.trim();
 
         renderMainChrome();
         renderMetadataTable();
         setupImageZoom();
+        showDataWarning(warnings);
+        showDataNote(notes);
 
         document.getElementById("setupSection").classList.add("hidden");
         document.getElementById("mainApp").classList.remove("hidden");
 
         const firstUnclassified = objects.findIndex(o => !localStorage.getItem(storageKey(o.id)));
         loadObject(firstUnclassified > 0 ? firstUnclassified : 0);
+    }
+
+    // IDs that don't line up between panels are the one failure that looks like
+    // success: you get one object per file instead of one per source, and every
+    // panel but one sits empty. Same for a catalog that matches nothing. Say so.
+    function describeMatching(byId) {
+        const notes = [];
+        const sample = obj => "<code>" + escapeHtml(obj.id) + "</code>";
+
+        if (CONFIG.panels.length > 1) {
+            const paired = objects.filter(o => Object.keys(o.urls).length > 1).length;
+            const selected = CONFIG.panels.filter(p => {
+                const el = document.getElementById("files_" + p.key);
+                return el && el.files && el.files.length > 0;
+            });
+            if (selected.length > 1 && paired === 0) {
+                const examples = selected.map(p => {
+                    const first = objects.find(o => o.urls[p.key]);
+                    return escapeHtml(p.label) + " &rarr; " + (first ? sample(first) : "&mdash;");
+                }).join(", ");
+                notes.push("<strong>The panels are not lining up.</strong> " + objects.length +
+                    " objects were built, but none has an image in more than one panel, so the IDs " +
+                    "taken from your filenames differ per panel (" + examples + "). Set each panel's " +
+                    "<code>suffix</code> to the part of the filename that identifies it, or set " +
+                    "<code>idRegex</code> so group 1 is the object ID.");
+            } else if (selected.length > 1 && paired < objects.length * 0.5) {
+                notes.push("<strong>Only " + paired + " of " + objects.length + " objects have more " +
+                    "than one image.</strong> If you expected most to be paired, check the panel " +
+                    "<code>suffix</code> values or <code>idRegex</code>.");
+            }
+        }
+
+        if (Object.keys(catalogData).length > 0) {
+            const matched = objects.filter(o => catalogData[o.id]).length;
+            if (matched === 0) {
+                const anyCatalogId = Object.keys(catalogData)[0];
+                notes.push("<strong>No object matched the catalog.</strong> IDs from your filenames " +
+                    "look like " + sample(objects[0]) + ", while <code>" + escapeHtml(catalogIdColumn || "id") +
+                    "</code> in the catalog holds <code>" + escapeHtml(anyCatalogId) + "</code>. " +
+                    "Catalog values are shown as &ldquo;-&rdquo; until these agree.");
+            } else if (matched < objects.length * 0.5) {
+                notes.push("<strong>" + matched + " of " + objects.length + " objects matched a catalog " +
+                    "row.</strong> The rest will show &ldquo;-&rdquo; for every column.");
+            }
+        }
+        return notes;
+    }
+
+    function showDataNote(detected) {
+        const el = document.getElementById("dataNote");
+        if (!detected || detected.length === 0) { el.classList.add("hidden"); el.innerHTML = ""; return; }
+        el.innerHTML = "Object IDs were read from your filenames by removing " +
+            detected.map(d => "<code>" + escapeHtml(d.suffix) + "</code> for " + escapeHtml(d.label)).join(" and ") +
+            ". Set each panel's <code>suffix</code>, or <code>idRegex</code>, to control this.";
+        el.classList.remove("hidden");
+    }
+
+    function showDataWarning(notes) {
+        const el = document.getElementById("dataWarning");
+        if (!notes || notes.length === 0) { el.classList.add("hidden"); el.innerHTML = ""; return; }
+        el.innerHTML = notes.join("<br><br>") +
+            '<br><br><button class="btn-secondary btn-inline" style="margin-left:0;" ' +
+            'onclick="returnToSetup()">Back to setup</button>';
+        el.classList.remove("hidden");
     }
 
     /* ---------------- inspection loop ---------------- */
@@ -1327,6 +1471,8 @@
         seedDemoProgress();
 
         dropDemoFromUrl();
+        document.getElementById("dataWarning").classList.add("hidden");
+        document.getElementById("dataNote").classList.add("hidden");
         document.getElementById("demoBanner").classList.remove("hidden");
         document.getElementById("setupSection").classList.add("hidden");
         document.getElementById("mainApp").classList.remove("hidden");

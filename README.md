@@ -52,19 +52,31 @@ Each panel gets its own file selection, and files are grouped into objects by th
 from the filename. So `12345_data.png` and `12345_model.png` land side by side as object
 `12345`.
 
-By default the ID is the filename with the extension and the panel's `suffix` stripped off.
-If your names don't fit that shape, set `idRegex` and the first capture group becomes the ID:
+You usually don't have to configure this. Each panel's files are compared and whatever ending
+they all share is treated as the panel's marker, not part of the ID — so a folder of
+`M101_hscdr3.jpg` and one of `M101_merian708.jpg` pair up as object `M101` with no setup. The
+tool reports what it stripped, and only ever cuts at a separator (`_`, `-`, `.`, space), so
+`M100`/`M200`/`M300` don't lose their trailing zeros.
+
+To take control, set a panel's `suffix` explicitly, or set `idRegex` — the first capture group
+becomes the ID:
 
 ```json
 { "idRegex": "^M(\\d+)_" }     // M98765_hscdr3.jpg  ->  98765
 ```
 
+If the IDs from your filenames don't line up between panels, or match nothing in your catalog,
+the tool says so on entry and shows you the actual IDs on both sides rather than leaving you
+with empty panels and blank metadata.
+
 Objects missing an image in some panel are still shown, with that slot dimmed.
 
 ## Catalog CSV (optional)
 
-Any CSV (or tab-separated file) with a column of object IDs. The ID column is found by name
-from `idColumns`. Quoted fields containing commas are handled.
+Any CSV (or tab-separated file) with a column of object IDs. The ID column is found by name from
+`idColumns`, and failing that by looking for a column that reads like an identifier — so
+`objectId_Merian`, `OBJID` or `source_id` are picked up without configuration. The tool tells you
+which column it used. Quoted fields containing commas are handled.
 
 With `"metadata": "auto"` every other column is displayed. To choose and group the columns
 yourself:
