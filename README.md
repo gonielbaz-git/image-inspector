@@ -4,7 +4,7 @@ A single HTML file for visual inspection of image sets. Open it in a browser, po
 your images and (optionally) a catalog CSV, click through them with the keyboard, and export
 your classifications as a CSV.
 
-**[Open the tool →](https://gonielbaz-git.github.io/image-inspector/)** (or download `index.html` and open it offline)
+**[Open the tool →](https://gonielbaz-git.github.io/image-inspector/)** &nbsp;·&nbsp; **[See it running, no files needed →](https://gonielbaz-git.github.io/image-inspector/?demo=1)**
 
 No install, no server, no dependencies. Nothing is uploaded anywhere — the file reads your
 images locally and saves progress in your browser's `localStorage`.
@@ -13,9 +13,28 @@ It was written for classifying galaxy cutouts (multi-band imaging from a survey)
 in the tool is survey- or astronomy-specific: the image panels, the categories, and the
 metadata columns are all defined in a config you can edit in the page itself.
 
+## What it looks like
+
+The setup screen — pick your images, your catalog, and edit the configuration in place:
+
+![Setup screen](docs/screenshot-setup.png)
+
+The inspection screen — images side by side, catalog values underneath, categories one keystroke away:
+
+![Inspection screen](docs/screenshot-inspecting.png)
+
+## Try it before you commit
+
+**Preview with demo data** on the setup screen (or the `?demo=1` link above) generates a synthetic
+set of objects in your browser and drops you straight into the inspection screen. Every control is
+live — classify, navigate, export — so you can see exactly what the tool does before organising a
+single file. The demo images are drawn on a canvas, not real observations, and demo progress is
+kept in its own namespace so it can never mix with real work.
+
 ## Quick start
 
 1. Download [`index.html`](index.html) and open it in your browser (double-click is enough).
+   Not sure yet? Press **Preview with demo data** and skip to step 4.
 2. Open **Configuration**, edit the JSON — or load one of the [`examples/`](examples) configs —
    and press **Apply**.
 3. Select your image files (one file picker per panel), optionally a catalog CSV, and press

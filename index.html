@@ -36,7 +36,7 @@
         
         .images-container {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(var(--panel-count, 3), 1fr);
             gap: 12px;
             margin-bottom: 0px;
         }
@@ -216,6 +216,8 @@
             margin-bottom: 5px;
         }
         
+        .classification-option input[type="radio"]:checked + label .number { color: #ffffff; }
+
         .classification-option input[type="radio"]:checked + label {
             background: linear-gradient(135deg, #4CAF50, #45a049);
             border-color: #4CAF50;
@@ -497,6 +499,9 @@
         .config-box textarea { width: 100%; min-height: 220px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; margin-top: 10px; }
         .config-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
         .hint { color: #888; font-size: 12px; }
+        .demo-banner { background: #3a2f12; border: 1px solid #7a6320; color: #f0d68a; border-radius: 6px;
+            padding: 10px 14px; margin-bottom: 14px; font-size: 13px; line-height: 1.5; }
+        .demo-banner strong { color: #ffd964; }
         input[type="text"] { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #1f1f1f; color: #eee; }
     </style>
 </head>
@@ -550,7 +555,12 @@
 
         <div class="nav-buttons">
             <button class="btn-primary" onclick="startInspection()">Start Inspection</button>
+            <button class="btn-secondary" onclick="startDemo()">Preview with demo data</button>
         </div>
+        <p style="text-align:center;" class="hint">
+            No files to hand? <em>Preview with demo data</em> builds a synthetic set in your browser
+            so you can see the inspection screen before committing to anything.
+        </p>
 
         <div id="setupMessages"></div>
     </div>
@@ -558,6 +568,11 @@
     <div id="mainApp" class="hidden">
         <div class="container">
             <div class="image-panel">
+                <div class="demo-banner hidden" id="demoBanner">
+                    <strong>Demo data.</strong> These images and catalog rows were generated in your
+                    browser &mdash; they are not real observations. Every control below is live, so click
+                    around freely. Reload the page to load your own images.
+                </div>
                 <div class="progress">
                     <div class="progress-bar" id="progressBar" style="width: 0%;">0 / 0</div>
                 </div>
@@ -655,6 +670,7 @@
 
     let CONFIG = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
 
+    let demoMode = false;
     let currentIndex = 0;
     let catalogData = {};     // id -> { column: value }
     let catalogColumns = [];  // header order from the catalog CSV
@@ -664,7 +680,7 @@
 
     /* ---------------- config plumbing ---------------- */
 
-    function storageKey(id) { return CONFIG.storagePrefix + ":" + id; }
+    function storageKey(id) { return (demoMode ? "demo" : CONFIG.storagePrefix) + ":" + id; }
 
     function categoryLabel(value) {
         const c = CONFIG.categories.find(c => String(c.value) === String(value));
@@ -701,7 +717,9 @@
         document.getElementById("formTitle").textContent = CONFIG.formTitle;
         document.getElementById("categoryPrompt").textContent = CONFIG.categoryPrompt;
 
-        document.getElementById("imagesContainer").innerHTML = CONFIG.panels.map(p => `
+        const container = document.getElementById("imagesContainer");
+        container.style.setProperty("--panel-count", Math.min(CONFIG.panels.length, 4));
+        container.innerHTML = CONFIG.panels.map(p => `
             <div class="image-wrapper">
                 <div class="image-label">${escapeHtml(p.label)}</div>
                 <img id="img_${p.key}" class="galaxy-image" alt="${escapeHtml(p.label)}">
@@ -1073,7 +1091,8 @@
 
         const stamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
         const who = inspectorName ? "_" + inspectorName.replace(/[^\w.-]/g, "") : "";
-        download(csv, CONFIG.outputPrefix + who + "_" + stamp + ".csv", "text/csv");
+        const stem = demoMode ? "demo_classifications" : CONFIG.outputPrefix;
+        download(csv, stem + who + "_" + stamp + ".csv", "text/csv");
         alert("Exported " + rows.length + " classification(s) to your Downloads folder.");
     }
 
@@ -1125,6 +1144,142 @@
     document.getElementById("comments").addEventListener("blur", autoSave);
 
     applyConfig(DEFAULT_CONFIG, true);
+
+    /* ---------------- demo mode ----------------
+       Generates a synthetic set in the browser so the inspection screen can be
+       explored with no files at all. Nothing here touches real data, and demo
+       progress is namespaced separately so it can never mix with real work. */
+
+    const DEMO_COUNT = 12;
+    const DEMO_COLUMNS = ["ra", "dec", "mag_g", "mag_r", "mag_i", "g-r", "r-i", "note"];
+    const DEMO_TINTS = [[1.0, 0.86, 0.66], [0.62, 0.86, 1.0], [1.0, 0.74, 0.80], [0.76, 1.0, 0.82]];
+    const DEMO_NOTES = ["isolated", "close pair", "", "near bright star", "low surface brightness", ""];
+
+    // Deterministic PRNG, so the demo looks identical on every reload.
+    function seededRandom(seed) {
+        let h = 2166136261;
+        for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+        return function () {
+            h ^= h << 13; h ^= h >>> 17; h ^= h << 5;
+            return ((h >>> 0) % 1000000) / 1000000;
+        };
+    }
+
+    // An exponential-profile blob or two on a noisy sky, tinted per panel.
+    function demoImage(id, panelIndex) {
+        const size = 260;
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        const image = ctx.createImageData(size, size);
+        const rand = seededRandom(id + ":" + panelIndex);
+        const tint = DEMO_TINTS[panelIndex % DEMO_TINTS.length];
+
+        const sources = [{
+            x: size / 2 + (rand() - 0.5) * 12, y: size / 2 + (rand() - 0.5) * 12,
+            scale: 20 + rand() * 22, peak: 175 + rand() * 80,
+            q: 0.45 + rand() * 0.5, pa: rand() * Math.PI
+        }];
+        const neighbours = Math.floor(rand() * 3);
+        for (let i = 0; i < neighbours; i++) {
+            sources.push({
+                x: rand() * size, y: rand() * size,
+                scale: 3 + rand() * 6, peak: 90 + rand() * 140,
+                q: 0.85 + rand() * 0.15, pa: rand() * Math.PI
+            });
+        }
+
+        for (let y = 0; y < size; y++) {
+            for (let x = 0; x < size; x++) {
+                let v = 5 + rand() * 11;
+                for (const s of sources) {
+                    const dx = x - s.x, dy = y - s.y;
+                    const cos = Math.cos(s.pa), sin = Math.sin(s.pa);
+                    const u = dx * cos + dy * sin;
+                    const w = (-dx * sin + dy * cos) / s.q;
+                    v += s.peak * Math.exp(-Math.sqrt(u * u + w * w) / s.scale);
+                }
+                const o = (y * size + x) * 4;
+                image.data[o] = Math.min(255, v * tint[0]);
+                image.data[o + 1] = Math.min(255, v * tint[1]);
+                image.data[o + 2] = Math.min(255, v * tint[2]);
+                image.data[o + 3] = 255;
+            }
+        }
+        ctx.putImageData(image, 0, 0);
+        return canvas.toDataURL("image/png");
+    }
+
+    function demoCatalogValue(column, rand) {
+        const n = String(column).toLowerCase();
+        if (n === "ra") return (150 + rand() * 2).toFixed(4);
+        if (n === "dec") return (1.5 + rand() * 2).toFixed(4);
+        if (n.includes("note") || n.includes("comment") || n.includes("flag")) {
+            return DEMO_NOTES[Math.floor(rand() * DEMO_NOTES.length)];
+        }
+        if (n.includes("color") || n.includes("-") || n.includes("_r_") ) return (-0.1 + rand() * 1.2).toFixed(3);
+        if (n.includes("mag") || n.length <= 3) return (18 + rand() * 4).toFixed(3);
+        return (rand() * 10).toFixed(3);
+    }
+
+    function startDemo() {
+        const groups = (CONFIG.metadata && CONFIG.metadata !== "auto") ? CONFIG.metadata : null;
+        const columns = groups
+            ? groups.reduce((acc, g) => acc.concat(g.columns.map(c => c.column)), [])
+            : DEMO_COLUMNS;
+
+        demoMode = true;
+        objects = [];
+        catalogData = {};
+        importedData = {};
+        catalogColumns = groups ? [] : ["id"].concat(DEMO_COLUMNS);
+
+        for (let i = 1; i <= DEMO_COUNT; i++) {
+            const id = "DEMO-" + String(i).padStart(4, "0");
+            const urls = {};
+            CONFIG.panels.forEach((p, pi) => { urls[p.key] = demoImage(id, pi); });
+            objects.push({ id: id, urls: urls });
+
+            const rand = seededRandom("catalog:" + id);
+            const row = { id: id };
+            columns.forEach(c => { row[c] = demoCatalogValue(c, rand); });
+            catalogData[id] = row;
+        }
+
+        inspectorName = document.getElementById("inspectorName").value.trim() || "demo";
+
+        renderMainChrome();
+        renderMetadataTable();
+        setupImageZoom();
+        seedDemoProgress();
+
+        document.getElementById("demoBanner").classList.remove("hidden");
+        document.getElementById("setupSection").classList.add("hidden");
+        document.getElementById("mainApp").classList.remove("hidden");
+        loadObject(0);
+    }
+
+    // A few pre-filled verdicts, so the progress bar and counters show something.
+    function seedDemoProgress() {
+        objects.slice(0, 3).forEach((obj, i) => {
+            if (localStorage.getItem(storageKey(obj.id))) return;
+            const category = CONFIG.categories[i % CONFIG.categories.length];
+            localStorage.setItem(storageKey(obj.id), JSON.stringify({
+                id: obj.id,
+                classification: category.value,
+                classification_label: category.label,
+                comments: i === 1 ? "second source overlaps the target" : "",
+                inspector: inspectorName,
+                timestamp: new Date().toISOString()
+            }));
+        });
+    }
+
+    // ?demo=1 (or #demo) opens straight into the preview - handy for links and docs.
+    if (/(\?|&)demo=1\b/.test(location.search) || location.hash === "#demo") {
+        startDemo();
+    }
+
     </script>
 </body>
 </html>
